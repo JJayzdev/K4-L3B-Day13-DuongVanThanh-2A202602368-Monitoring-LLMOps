@@ -8,7 +8,7 @@
 - **MSSV:** 2A202602368
 - **Lớp:** K4-L3B
 - **Repository URL:** `https://github.com/JJayzdev/K4-L3B-Day13-DuongVanThanh-2A202602368-Monitoring-LLMOps`
-- **Commit SHA cuối:** *(Điền `git log -1 --oneline` sau khi commit cuối)*
+- **Commit SHA cuối:** `57ae40a` (`57ae40a92421f3db9c114274bc41be7aa9787563` — `feat: complete Day 13 monitoring & LLMOps lab and evidence`)
 - **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1` *(Cập nhật/xác nhận khi tải `config/challenge.json` ở CP3)*
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602368`
 
