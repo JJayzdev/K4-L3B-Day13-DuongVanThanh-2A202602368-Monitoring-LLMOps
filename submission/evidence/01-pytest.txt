@@ -1,0 +1,6 @@
+$ git log -1 --oneline
+61a34f8 docs: avoid leaking challenge hints
+
+$ python -m pytest -q
+.........................                                                [100%]
+25 passed in 2.29s

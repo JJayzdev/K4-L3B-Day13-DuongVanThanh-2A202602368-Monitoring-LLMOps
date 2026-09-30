@@ -7,9 +7,15 @@ primary_slo:
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình. Ví dụ nếu có 10,000 request trong cửa sổ 28 ngày, error budget 0.5% nghĩa là tối đa 50 request được phép không đạt SLO.
+  assumed_window_requests: 10000
+  error_budget_requests: 50
+  note: >
+    Ở trạng thái hoạt động ổn định (sau khi warm-up kết nối Langfuse), latency P95 đạt ~400-500ms (thấp hơn nhiều so với ngưỡng 3000ms) và tỉ lệ thành công đạt 100%.
+    Do đó giữ SLO 99.5% request thành công có latency_ms <= 3000ms trong cửa sổ 28 ngày là hợp lý để phát hiện sớm hiện tượng nghẽn RAG (rag_slow ~2500ms+) hoặc lỗi tool.
+    Tính error budget: Với SLO 99.5% (error budget 0.5%) trên giả định 10,000 request trong 28 ngày, hệ thống được phép có tối đa 10,000 * 0.5% = 50 request bị lỗi (request_failed) hoặc chậm quá 3000ms.
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5
   quality_score_avg_min: 0.75
   retrieval_success_rate_pct_min: 90
+

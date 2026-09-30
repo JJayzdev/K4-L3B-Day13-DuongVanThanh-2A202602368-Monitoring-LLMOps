@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="refresh" content="30" />
+<title>K4-L3B Day 13 Monitoring & LLMOps — Runtime Dashboard</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 20px 28px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+    margin-bottom: 20px;
+  }
+  header h1 { font-size: 22px; font-weight: 700; color: var(--text); }
+  .meta-badges { display: flex; gap: 10px; font-size: 13px; }
+  .badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--muted);
+  }
+  .badge strong { color: var(--accent); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 265px;
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .panel-title { font-size: 15px; font-weight: 600; }
+  .panel-id { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .unit-tag {
+    font-size: 11px;
+    background: #0f172a;
+    color: var(--accent);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .kpi-row {
+    display: flex;
+    gap: 14px;
+    margin: 8px 0 12px 0;
+    flex-wrap: wrap;
+  }
+  .kpi {
+    background: rgba(15, 23, 42, 0.65);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    flex: 1;
+    min-width: 80px;
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); }
+  .kpi-val { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .chart-box {
+    position: relative;
+    background: #0b1120;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 14px 12px 10px 12px;
+    margin-top: 4px;
+  }
+  .threshold-line {
+    border-top: 2px dashed var(--danger);
+    position: relative;
+    margin: 6px 0 10px 0;
+  }
+  .threshold-line span {
+    position: absolute;
+    right: 0;
+    top: -16px;
+    font-size: 11px;
+    color: #fca5a5;
+    background: #0b1120;
+    padding: 0 4px;
+  }
+  .bar-group { display: flex; flex-direction: column; gap: 7px; }
+  .bar-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .bar-label { width: 78px; color: var(--muted); }
+  .bar-track { flex: 1; height: 12px; background: #1e293b; border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar-fill.good { background: var(--good); }
+  .bar-fill.warn { background: var(--warn); }
+  .bar-val { width: 68px; text-align: right; font-variant-numeric: tabular-nums; }
+  .footer-meta {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid rgba(51, 65, 85, 0.5);
+    padding-top: 8px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>K4-L3B Day 13 Monitoring & LLMOps</h1>
+      <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+        Source: <code>data/logs.jsonl</code> (32 events / 15 requests) | Rendered: 2026-09-30 05:21:16 UTC
+      </div>
+    </div>
+    <div class="meta-badges">
+      <div class="badge">Time Range: <strong>Last 60 minutes</strong></div>
+      <div class="badge">Refresh: <strong>30s</strong></div>
+      <div class="badge">Contract: <strong>6/6 Panels Valid</strong></div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Panel 1: Latency -->
+    <div class="panel" id="panel-latency">
+      <div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-id">Panel 1 • id: latency</div>
+            <div class="panel-title">Latency percentiles and TTFT</div>
+          </div>
+          <span class="unit-tag">unit: ms</span>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">P50</div><div class="kpi-val">152 ms</div></div>
+          <div class="kpi"><div class="kpi-label">P95 (SLO)</div><div class="kpi-val" style="color: #22c55e">2653 ms</div></div>
+          <div class="kpi"><div class="kpi-label">P99</div><div class="kpi-val">2653 ms</div></div>
+          <div class="kpi"><div class="kpi-label">TTFT P95</div><div class="kpi-val">50 ms</div></div>
+        </div>
+        <div class="chart-box">
+          <div class="threshold-line"><span>SLO Threshold: p95 &lt;= 3000 ms (Challenge &gt; 2000 ms)</span></div>
+          <div class="bar-group">
+            <div class="bar-item"><span class="bar-label">05:20 UTC</span><div class="bar-track"><div class="bar-fill good" style="width: 60.9%"></div></div><span class="bar-val" style="color: #22c55e">1826 ms</span></div><div class="bar-item"><span class="bar-label">05:21 UTC</span><div class="bar-track"><div class="bar-fill warn" style="width: 88.4%"></div></div><span class="bar-val" style="color: #f59e0b">2653 ms</span></div>
+            <div class="bar-item"><span class="bar-label">TTFT P95</span><div class="bar-track"><div class="bar-fill good" style="width: 3.0%"></div></div><span class="bar-val">50 ms</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>events: [response_sent]</span>
+        <span>threshold: p95 lte 3000 ms</span>
+      </div>
+    </div>
+
+    <!-- Panel 2: Traffic -->
+    <div class="panel" id="panel-traffic">
+      <div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-id">Panel 2 • id: traffic</div>
+            <div class="panel-title">Request traffic</div>
+          </div>
+          <span class="unit-tag">unit: requests_per_minute</span>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Total Requests</div><div class="kpi-val">15</div></div>
+          <div class="kpi"><div class="kpi-label">Rate / Min</div><div class="kpi-val" style="color: #22c55e">7.5 rpm</div></div>
+        </div>
+        <div class="chart-box">
+          <div class="threshold-line"><span>Threshold: rate_per_minute &gt;= 1 rpm</span></div>
+          <div class="bar-group">
+            <div class="bar-item"><span class="bar-label">05:20 UTC</span><div class="bar-track"><div class="bar-fill" style="width: 80%"></div></div><span class="bar-val">10 req/m</span></div><div class="bar-item"><span class="bar-label">05:21 UTC</span><div class="bar-track"><div class="bar-fill" style="width: 40%"></div></div><span class="bar-val">5 req/m</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>events: [request_received]</span>
+        <span>threshold: rate_per_minute gte 1</span>
+      </div>
+    </div>
+
+    <!-- Panel 3: Errors -->
+    <div class="panel" id="panel-errors">
+      <div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-id">Panel 3 • id: errors</div>
+            <div class="panel-title">Error rate and retrieval success</div>
+          </div>
+          <span class="unit-tag">unit: percent</span>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Error Rate</div><div class="kpi-val" style="color: #22c55e">0.0%</div></div>
+          <div class="kpi"><div class="kpi-label">Retrieval Success</div><div class="kpi-val" style="color: #22c55e">100.0%</div></div>
+          <div class="kpi"><div class="kpi-label">Failed Count</div><div class="kpi-val">0</div></div>
+        </div>
+        <div class="chart-box">
+          <div class="threshold-line"><span>Threshold: error_rate_pct &lt;= 2% | retrieval &gt;= 90%</span></div>
+          <div class="bar-group">
+            <div class="bar-item"><span class="bar-label">Error Rate</span><div class="bar-track"><div class="bar-fill warn" style="width: 0.0% "></div></div><span class="bar-val">0.0%</span></div>
+            <div class="bar-item"><span class="bar-label">Tool Success</span><div class="bar-track"><div class="bar-fill good" style="width: 100%"></div></div><span class="bar-val">100.0%</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>events: [request_received, request_failed, response_sent]</span>
+        <span>threshold: error_rate_pct lte 2%</span>
+      </div>
+    </div>
+
+    <!-- Panel 4: Cost -->
+    <div class="panel" id="panel-cost">
+      <div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-id">Panel 4 • id: cost</div>
+            <div class="panel-title">Cost over time</div>
+          </div>
+          <span class="unit-tag">unit: usd</span>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Total Cost (Window)</div><div class="kpi-val" style="color: #22c55e">$0.03143</div></div>
+          <div class="kpi"><div class="kpi-label">Daily Budget Limit</div><div class="kpi-val">$2.50000</div></div>
+        </div>
+        <div class="chart-box">
+          <div class="threshold-line"><span>Threshold: total &lt;= 2.5 USD</span></div>
+          <div class="bar-group">
+            <div class="bar-item"><span class="bar-label">05:20 UTC</span><div class="bar-track"><div class="bar-fill good" style="width: 41.3%"></div></div><span class="bar-val">$0.02066</span></div><div class="bar-item"><span class="bar-label">05:21 UTC</span><div class="bar-track"><div class="bar-fill good" style="width: 21.5%"></div></div><span class="bar-val">$0.01077</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>events: [response_sent]</span>
+        <span>threshold: total lte 2.5 usd</span>
+      </div>
+    </div>
+
+    <!-- Panel 5: Tokens -->
+    <div class="panel" id="panel-tokens">
+      <div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-id">Panel 5 • id: tokens</div>
+            <div class="panel-title">Input and output tokens</div>
+          </div>
+          <span class="unit-tag">unit: tokens</span>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">sum(tokens_in)</div><div class="kpi-val">513</div></div>
+          <div class="kpi"><div class="kpi-label">sum(tokens_out)</div><div class="kpi-val">1993</div></div>
+          <div class="kpi"><div class="kpi-label">Total Tokens</div><div class="kpi-val" style="color: #22c55e">2506</div></div>
+        </div>
+        <div class="chart-box">
+          <div class="threshold-line"><span>Threshold: sum_by_field &lt;= 50,000 tokens</span></div>
+          <div class="bar-group">
+            <div class="bar-item"><span class="bar-label">tokens_in</span><div class="bar-track"><div class="bar-fill" style="width: 10.3%"></div></div><span class="bar-val">513</span></div>
+            <div class="bar-item"><span class="bar-label">tokens_out</span><div class="bar-track"><div class="bar-fill good" style="width: 39.9%"></div></div><span class="bar-val">1993</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>events: [response_sent]</span>
+        <span>threshold: sum_by_field lte 50000</span>
+      </div>
+    </div>
+
+    <!-- Panel 6: Quality -->
+    <div class="panel" id="panel-quality">
+      <div>
+        <div class="panel-header">
+          <div>
+            <div class="panel-id">Panel 6 • id: quality</div>
+            <div class="panel-title">Quality proxy</div>
+          </div>
+          <span class="unit-tag">unit: score_0_to_1</span>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">mean(quality_score)</div><div class="kpi-val" style="color: #22c55e">0.87</div></div>
+          <div class="kpi"><div class="kpi-label">Min Target</div><div class="kpi-val">0.75</div></div>
+        </div>
+        <div class="chart-box">
+          <div class="threshold-line"><span>Threshold: mean &gt;= 0.75 score_0_to_1</span></div>
+          <div class="bar-group">
+            <div class="bar-item"><span class="bar-label">Mean Score</span><div class="bar-track"><div class="bar-fill good" style="width: 86.7%"></div></div><span class="bar-val">0.87 / 1.00</span></div>
+            <div class="bar-item"><span class="bar-label">SLO Floor</span><div class="bar-track"><div class="bar-fill warn" style="width: 75%"></div></div><span class="bar-val">0.75 / 1.00</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>events: [response_sent]</span>
+        <span>threshold: mean gte 0.75</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
